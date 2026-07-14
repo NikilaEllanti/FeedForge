@@ -59,10 +59,28 @@ export class InstagramAdapter extends BaseAdapter {
 
   /** Check if we're on Instagram's main feed page */
   canRun(): boolean {
-    return (
+    const isHost = (
       window.location.hostname === 'www.instagram.com' ||
       window.location.hostname === 'instagram.com'
     );
+    if (!isHost) return false;
+
+    const path = window.location.pathname;
+    const excludedPrefixes = [
+      '/accounts/',
+      '/direct/',
+      '/emailsignup/',
+      '/developer/',
+      '/legal/',
+      '/about/',
+      '/press/',
+      '/static/',
+    ];
+    if (excludedPrefixes.some(prefix => path.startsWith(prefix))) {
+      return false;
+    }
+
+    return true;
   }
 
   /** Get the main feed container */

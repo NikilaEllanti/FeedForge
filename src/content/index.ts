@@ -197,13 +197,69 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true; // Keep message channel open for async response
 });
 
+// ─── SPA Navigation Watcher ──────────────────────────────────
+let lastPath = window.location.pathname;
+
+function watchUrlChanges(): void {
+  setInterval(async () => {
+    const currentPath = window.location.pathname;
+    if (currentPath === lastPath) return;
+
+    lastPath = currentPath;
+    console.log('[FeedForge] Path changed:', currentPath);
+
+    const adapter = getActiveAdapter();
+    const profile = await getUserProfile();
+
+    if (adapter && adapter.canRun() && profile.settings.enabled) {
+      if (!isRunning) {
+        await initialize();
+      } else {
+        // Restart feed observer and rerun ranking for new view
+        stopObserving?.();
+        cleanupRenderer();
+        injectStyles();
+
+        if (profile.settings.focusModeEnabled) {
+          showFocusBanner(profile.goals.filter(g => g.isActive).length, () => {
+            saveSettings({ ...profile.settings, focusModeEnabled: false });
+          });
+        }
+
+        await runRanking(adapter, profile);
+
+        stopObserving = adapter.observeFeed(
+          debounce(async (newPosts: FeedPost[]) => {
+            console.log(`[FeedForge] ${newPosts.length} new posts detected`);
+            const freshProfile = await getUserProfile();
+            await runRanking(adapter, freshProfile);
+          }, 1500) as (newPosts: FeedPost[]) => void,
+        );
+      }
+    } else {
+      if (isRunning) {
+        console.log('[FeedForge] Left feed page, stopping observer');
+        cleanupRenderer();
+        stopObserving?.();
+        isRunning = false;
+      }
+    }
+  }, 2000);
+}
+
 // ─── Boot ────────────────────────────────────────────────────
 
 // Wait for page to be reasonably loaded
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(initialize, 1500);
+    setTimeout(() => {
+      initialize();
+      watchUrlChanges();
+    }, 1500);
   });
 } else {
-  setTimeout(initialize, 1500);
+  setTimeout(() => {
+    initialize();
+    watchUrlChanges();
+  }, 1500);
 }
