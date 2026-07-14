@@ -10,7 +10,7 @@ import { getDefaultProfile } from './profile';
 async function getLocal<T>(key: string): Promise<T | null> {
   return new Promise(resolve => {
     chrome.storage.local.get(key, result => {
-      resolve(result[key] ?? null);
+      resolve((result as any)[key] ?? null);
     });
   });
 }

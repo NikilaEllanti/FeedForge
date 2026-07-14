@@ -24,15 +24,6 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
-    rollupOptions: {
-      output: {
-        // Chunk ONNX model separately for caching
-        manualChunks: (id) => {
-          if (id.includes('@xenova/transformers')) return 'transformers';
-          if (id.includes('onnxruntime')) return 'onnx';
-        },
-      },
-    },
   },
   optimizeDeps: {
     exclude: ['@xenova/transformers'],
